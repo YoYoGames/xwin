@@ -287,6 +287,8 @@ fn main() -> Result<(), Error> {
                 }
                 xwin::PayloadKind::SdkStoreLibs => "SDK.libs.store.all".to_owned(),
                 xwin::PayloadKind::Ucrt => "SDK.ucrt.all".to_owned(),
+
+                xwin::PayloadKind::DiaSdk => "DIA.SDK".to_owned(),
             };
 
             let pb = mp.add(

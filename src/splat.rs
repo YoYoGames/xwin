@@ -46,6 +46,7 @@ impl SdkHeaders {
 pub(crate) struct SplatRoots {
     crt: PathBuf,
     sdk: PathBuf,
+    dia: PathBuf,
     src: PathBuf,
 }
 
@@ -55,6 +56,10 @@ pub(crate) fn prep_splat(
 ) -> Result<SplatRoots, Error> {
     let crt_root = config.output.join("crt");
     let sdk_root = config.output.join("sdk");
+
+    // Software sometimes relies on DIA SDK having this precise structure,
+    // so we don't touch it
+    let dia_root = config.output.join("DIA SDK");
 
     if crt_root.exists() {
         std::fs::remove_dir_all(&crt_root)
@@ -66,16 +71,24 @@ pub(crate) fn prep_splat(
             .with_context(|| format!("unable to delete existing SDK directory {sdk_root}"))?;
     }
 
+    if dia_root.exists() {
+        std::fs::remove_dir_all(&dia_root)
+            .with_context(|| format!("unable to delete existing DIA SDK directory {dia_root}"))?;
+    }
+
     std::fs::create_dir_all(&crt_root)
         .with_context(|| format!("unable to create CRT directory {crt_root}"))?;
     std::fs::create_dir_all(&sdk_root)
         .with_context(|| format!("unable to create SDK directory {sdk_root}"))?;
+    std::fs::create_dir_all(&dia_root)
+        .with_context(|| format!("unable to create DIA SDK directory {dia_root}"))?;
 
     let src_root = ctx.work_dir.join("unpack");
 
     Ok(SplatRoots {
         crt: crt_root,
         sdk: sdk_root,
+        dia: dia_root,
         src: src_root,
     })
 }
@@ -329,6 +342,18 @@ pub(crate) fn splat(
 
             mappings
         }
+
+        PayloadKind::DiaSdk => {
+            let tree = get_tree(&src)?;
+
+            vec![Mapping {
+                src,
+                target: roots.dia.clone(),
+                tree,
+                kind,
+                variant,
+            }]
+        }
     };
 
     let include_debug_libs = config.include_debug_libs;
@@ -420,7 +445,8 @@ pub(crate) fn splat(
                             PayloadKind::CrtHeaders
                             | PayloadKind::AtlHeaders
                             | PayloadKind::Ucrt
-                            | PayloadKind::AtlLibs => {}
+                            | PayloadKind::AtlLibs
+                            | PayloadKind::DiaSdk => {}
 
                             PayloadKind::SdkHeaders => {
                                 if let Some(sdk_headers) = &mut sdk_headers {
@@ -611,12 +637,13 @@ fn symlink(original: &str, link: &Path) -> Result<(), Error> {
         tracing::debug!("failed to get metadata for {original}");
         return Ok(());
     }
-    
+
     if file_info.unwrap().is_dir() {
         std::os::windows::fs::symlink_dir(original, link)
     } else {
         std::os::windows::fs::symlink_file(original, link)
-    }.with_context(|| format!("unable to symlink from {link} to {original}"))
+    }
+    .with_context(|| format!("unable to symlink from {link} to {original}"))
 }
 
 pub(crate) fn finalize_splat(

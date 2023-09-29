@@ -257,6 +257,7 @@ pub enum PayloadKind {
     SdkLibs,
     SdkStoreLibs,
     Ucrt,
+    DiaSdk,
 }
 
 /// Returns the list of packages that are actually needed for cross compilation
@@ -274,7 +275,47 @@ pub fn prune_pkg_list(
     get_crt(pkgs, arches, variants, &mut pruned, include_atl)?;
     get_sdk(pkgs, arches, &mut pruned)?;
 
+    // TODO: Put this behind a config flag
+    get_dia(pkgs, &mut pruned)?;
+
     Ok(pruned)
+}
+
+fn get_dia(
+    pkgs: &BTreeMap<String, manifest::ManifestItem>,
+    pruned: &mut Vec<Payload>,
+) -> Result<(), Error> {
+    let diasdk = pkgs.get("Microsoft.VisualCpp.DIA.SDK");
+    if diasdk.is_none() {
+        tracing::error!("no DIA SDK!");
+        return Ok(());
+    }
+
+    let manifest_payloads = &diasdk.unwrap().payloads;
+    if manifest_payloads.len() != 1 {
+        tracing::debug!("huh? found more than 1 payload in the DIA SDK manifest item");
+    }
+
+    pruned.push(Payload {
+        filename: manifest_payloads[0].file_name.clone().into(),
+        sha256: manifest_payloads[0].sha256.clone(),
+        url: manifest_payloads[0].url.clone(),
+        size: manifest_payloads[0].size,
+        install_size: (diasdk.unwrap().payloads.len() == 1)
+            .then_some(diasdk)
+            .and_then(|diasdk| {
+                diasdk
+                    .unwrap()
+                    .install_sizes
+                    .as_ref()
+                    .and_then(|is| is.target_drive)
+            }),
+        kind: PayloadKind::DiaSdk,
+        target_arch: None,
+        variant: None,
+    });
+
+    Ok(())
 }
 
 fn get_crt(
