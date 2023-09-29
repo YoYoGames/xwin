@@ -42,15 +42,20 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
+      - name: install LLVM 17
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 17
       # Add the actual target we compile for in the test
       - run: rustup target add x86_64-pc-windows-msvc
       - name: symlinks
         run: |
           set -eux
-          sudo ln -s clang-12 /usr/bin/clang-cl
-          sudo ln -s llvm-ar-12 /usr/bin/llvm-lib
-          sudo ln -s lld-link-12 /usr/bin/lld-link
-          sudo ln -s lld-12 /usr/bin/ld.lld
+          sudo ln -s clang-17 /usr/bin/clang-cl
+          sudo ln -s llvm-ar-17 /usr/bin/llvm-lib
+          sudo ln -s lld-link-17 /usr/bin/lld-link
+          sudo ln -s lld-17 /usr/bin/ld.lld
           clang++ -v
           ld.lld -v
           llvm-lib -v
@@ -124,6 +129,8 @@ jobs:
     name: Release
     needs: [deny-check]
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
     strategy:
       matrix:
         include:
@@ -191,5 +198,3 @@ jobs:
         with:
           draft: true
           files: "xwin*"
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
