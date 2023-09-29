@@ -605,8 +605,18 @@ fn symlink(original: &str, link: &Path) -> Result<(), Error> {
 }
 
 #[cfg(windows)]
-fn symlink(_original: &str, _link: &Path) -> Result<(), Error> {
-    Ok(())
+fn symlink(original: &str, link: &Path) -> Result<(), Error> {
+    let file_info = std::fs::metadata(original);
+    if file_info.is_err() {
+        tracing::debug!("failed to get metadata for {original}");
+        return Ok(());
+    }
+    
+    if file_info.unwrap().is_dir() {
+        std::os::windows::fs::symlink_dir(original, link)
+    } else {
+        std::os::windows::fs::symlink_file(original, link)
+    }.with_context(|| format!("unable to symlink from {link} to {original}"))
 }
 
 pub(crate) fn finalize_splat(
