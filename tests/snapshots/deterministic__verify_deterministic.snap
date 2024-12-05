@@ -2,6 +2,13 @@
 source: tests/deterministic.rs
 expression: actual
 ---
+DIA SDK/include/cvconst.h @ 18748a6e3f075078
+DIA SDK/include/dia2.h @ d90b401ea80e915
+DIA SDK/include/diacreate.h @ 52bc847d0784bed9
+DIA SDK/lib/amd64/diaguids.lib @ 956e858b8b581d03
+DIA SDK/lib/arm/diaguids.lib @ ecbe5407ff5f9a4f
+DIA SDK/lib/arm64/diaguids.lib @ 7d2e736438af3865
+DIA SDK/lib/diaguids.lib @ 4ae23fb1ecf151cb
 crt/include/ATLComMem.h @ b7eb4b56527ca224
 crt/include/ATLComTime.h @ 9bf1e896332d1648
 crt/include/CodeAnalysis/Warnings.h @ 55ab60b57eb1dccc

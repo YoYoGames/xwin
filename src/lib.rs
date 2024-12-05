@@ -1,6 +1,6 @@
 #![doc = include_str!("../README.md")]
 
-use anyhow::{Context as _, Error};
+use anyhow::{Context as _, Error, Ok};
 pub use camino::{Utf8Path as Path, Utf8PathBuf as PathBuf};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -183,6 +183,7 @@ pub enum PayloadKind {
     SdkLibs,
     SdkStoreLibs,
     Ucrt,
+    DiaSdk,
 }
 
 pub struct PrunedPackageList {
@@ -214,6 +215,7 @@ pub fn prune_pkg_list(
         crt_version,
     )?;
     let sdk_version = get_sdk(pkgs, arches, sdk_version, &mut payloads)?;
+    get_dia_sdk(pkgs, &mut payloads)?;
 
     Ok(PrunedPackageList {
         crt_version,
@@ -730,6 +732,42 @@ fn get_sdk(
     }
 
     Ok(sdk_version.to_string())
+}
+
+fn get_dia_sdk(
+    pkgs: &BTreeMap<String, manifest::ManifestItem>,
+    pruned: &mut Vec<Payload>,
+) -> Result<(), Error> {
+    let diasdk = pkgs.get("Microsoft.VisualCpp.DIA.SDK");
+    if diasdk.is_none() {
+        panic!("Unable to find DIA SDK");
+    }
+
+    let manifest_payloads = &diasdk.unwrap().payloads;
+    if manifest_payloads.len() != 1 {
+        tracing::debug!("Found more than 1 payload in the DIA SDK manifest item");
+    }
+
+    pruned.push(Payload {
+        filename: manifest_payloads[0].file_name.clone().into(),
+        sha256: manifest_payloads[0].sha256.clone(),
+        url: manifest_payloads[0].url.clone(),
+        size: manifest_payloads[0].size,
+        install_size: (diasdk.unwrap().payloads.len() == 1)
+            .then_some(diasdk)
+            .and_then(|diasdk| {
+                diasdk
+                    .unwrap()
+                    .install_sizes
+                    .as_ref()
+                    .and_then(|is| is.target_drive)
+            }),
+        kind: PayloadKind::DiaSdk,
+        target_arch: None,
+        variant: None,
+    });
+
+    Ok(())
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]

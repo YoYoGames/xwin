@@ -412,6 +412,7 @@ fn main() -> Result<(), Error> {
                 }
                 PayloadKind::SdkStoreLibs => "SDK.libs.store.all".to_owned(),
                 PayloadKind::Ucrt => "SDK.ucrt.all".to_owned(),
+                PayloadKind::DiaSdk => "DIA.SDK".to_owned(),
             };
 
             let pb = mp.add(

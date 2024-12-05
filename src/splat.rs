@@ -49,6 +49,7 @@ pub(crate) struct SplatRoots {
     pub root: PathBuf,
     pub crt: PathBuf,
     pub sdk: PathBuf,
+    pub dia_sdk: PathBuf,
     src: PathBuf,
 }
 
@@ -77,6 +78,8 @@ pub(crate) fn prep_splat(
         (root.join("crt"), root.join("sdk"))
     };
 
+    let dia_sdk_root = root.join("DIA SDK");
+
     if crt_root.exists() {
         std::fs::remove_dir_all(&crt_root)
             .with_context(|| format!("unable to delete existing CRT directory {crt_root}"))?;
@@ -87,10 +90,18 @@ pub(crate) fn prep_splat(
             .with_context(|| format!("unable to delete existing SDK directory {sdk_root}"))?;
     }
 
+    if dia_sdk_root.exists() {
+        std::fs::remove_dir_all(&dia_sdk_root).with_context(|| {
+            format!("unable to delete existing DIA SDK directory {dia_sdk_root}")
+        })?;
+    }
+
     std::fs::create_dir_all(&crt_root)
         .with_context(|| format!("unable to create CRT directory {crt_root}"))?;
     std::fs::create_dir_all(&sdk_root)
         .with_context(|| format!("unable to create SDK directory {sdk_root}"))?;
+    std::fs::create_dir_all(&dia_sdk_root)
+        .with_context(|| format!("unable to create SDK directory {dia_sdk_root}"))?;
 
     let src_root = ctx.work_dir.join("unpack");
 
@@ -98,6 +109,7 @@ pub(crate) fn prep_splat(
         root,
         crt: crt_root,
         sdk: sdk_root,
+        dia_sdk: dia_sdk_root,
         src: src_root,
     })
 }
@@ -397,6 +409,18 @@ pub(crate) fn splat(
 
             mappings
         }
+
+        PayloadKind::DiaSdk => {
+            let tree = get_tree(&src)?;
+            vec![Mapping {
+                src,
+                target: roots.dia_sdk.clone(),
+                tree,
+                kind,
+                variant,
+                section: SectionKind::SdkLib,
+            }]
+        }
     };
 
     let mut results = Vec::new();
@@ -588,7 +612,8 @@ pub(crate) fn splat(
                                 PayloadKind::CrtHeaders
                                 | PayloadKind::AtlHeaders
                                 | PayloadKind::Ucrt
-                                | PayloadKind::AtlLibs => {}
+                                | PayloadKind::AtlLibs
+                                | PayloadKind::DiaSdk => {}
 
                                 PayloadKind::SdkHeaders => {
                                     if let Some(sdk_headers) = &mut sdk_headers {
