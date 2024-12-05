@@ -140,6 +140,8 @@ jobs:
             target: x86_64-pc-windows-msvc
             strip: ""
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     env:
       CC_aarch64_unknown_linux_musl: clang
       AR_aarch64_unknown_linux_musl: llvm-ar
@@ -188,5 +190,3 @@ jobs:
         with:
           draft: true
           files: "xwin*"
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
